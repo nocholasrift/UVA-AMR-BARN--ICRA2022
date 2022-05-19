@@ -29,6 +29,7 @@ def path_coord_to_gazebo_coord(x, y):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'test BARN navigation challenge')
     parser.add_argument('--world_idx', type=int, default=0)
+    parser.add_argument('--navigation_stack', type=str, default="")
     parser.add_argument('--gui', action="store_true")
     parser.add_argument('--out', type=str, default="out.txt")
     args = parser.parse_args()
@@ -53,7 +54,7 @@ if __name__ == "__main__":
         'roslaunch',
         launch_file,
         'world_name:=' + world_name,
-        'gui:=' + ("true" if args.gui else "false")
+        'gui:=' + ("true" if args.gui else "false"),
     ])
     time.sleep(5)  # sleep to wait until the gazebo being created
     
@@ -86,30 +87,13 @@ if __name__ == "__main__":
     ## (Customize this block to add your own navigation stack)
     ##########################################################################################
     
-    launch_file = join(base_path, '..', 'jackal_helper/launch/move_base_DWA.launch')
+    launch_file = args.navigation_stack
     nav_stack_process = subprocess.Popen([
         'roslaunch',
         launch_file,
+        'goal_x:=0',
+        'goal_y:=10'
     ])
-    
-    # Make sure your navigation stack recives a goal of (0, 10, 0), which is 10 meters away
-    # along postive y-axis.
-    import actionlib
-    from geometry_msgs.msg import Quaternion
-    from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
-    nav_as = actionlib.SimpleActionClient('/move_base', MoveBaseAction)
-    mb_goal = MoveBaseGoal()
-    mb_goal.target_pose.header.frame_id = 'odom'
-    mb_goal.target_pose.pose.position.x = GOAL_POSITION[0]
-    mb_goal.target_pose.pose.position.y = GOAL_POSITION[1]
-    mb_goal.target_pose.pose.position.z = 0
-    mb_goal.target_pose.pose.orientation = Quaternion(0, 0, 0, 1)
-
-    nav_as.wait_for_server()
-    nav_as.send_goal(mb_goal)
-
-
-
 
     ##########################################################################################
     ## 2. Start navigation
@@ -136,7 +120,7 @@ if __name__ == "__main__":
         curr_time = rospy.get_time()
         pos = gazebo_sim.get_model_state().pose.position
         curr_coor = (pos.x, pos.y)
-        print("Time: %.2f (s), x: %.2f (m), y: %.2f (m)" %(curr_time - start_time, *curr_coor), end="\r")
+        print("World: %d, time: %.2f (s), x: %.2f (m), y: %.2f (m)" %(args.world_idx, curr_time - start_time, *curr_coor), end="\r")
         collided = gazebo_sim.get_hard_collision()
         while rospy.get_time() - curr_time < 0.1:
             time.sleep(0.01)
@@ -178,3 +162,4 @@ if __name__ == "__main__":
         f.write("%d %d %d %d %.4f %.4f\n" %(args.world_idx, success, collided, (curr_time - start_time)>=100, curr_time - start_time, nav_metric))
     
     gazebo_process.terminate()
+    nav_stack_process.terminate()
