@@ -831,9 +831,9 @@ int main(int argc, char** argv){
     ros::init(argc, argv, "rrt_gen");
     ros::NodeHandle nh;
 
-    double goal_x, goal_y;
-    nh.getParam("goal_x", goal_x);
-    nh.getParam("goal_y", goal_y);
+    float goal_x=0, goal_y=10;
+    //nh.getParam("goal_x", goal_x);
+    //nh.getParam("goal_y", goal_y);
 
     Eigen::Vector3f pose(0,0,0);
 
