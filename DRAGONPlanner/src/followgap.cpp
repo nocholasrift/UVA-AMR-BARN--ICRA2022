@@ -845,6 +845,7 @@ int main(int argc, char** argv){
     // std::cout << goal_y << std::endl;
     // exit(0);
 
+
     Eigen::Vector3f pose(0,0,0);
 
     quadtree::Box<float> box(left,top,bwidth,bheight);

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Sun May  1 21:24:03 2022
@@ -36,6 +36,7 @@ class messageClass():
 		self.footpr = 0.8
 		self.minind = 0
 		self.maxind = 719
+		self.angle_min = None
 
 def distance(point1,point2):
     point1 = np.array(point1)
@@ -54,6 +55,7 @@ def scanCallback(data):
     message.angle_inc = data.angle_increment
     if not len(message.angles):
         message.angles = np.array([data.angle_min + i * data.angle_increment for i in range(message.minind,message.maxind)])
+        message.angle_min = data.angle_min
             
 def odomCallback(data):
 	message.velx = data.twist.twist.linear.x
@@ -72,12 +74,13 @@ def wrapToPi(angle):
 def ray_check(goal):
     marker_pub = rospy.Publisher('/visualization_marker_array', MarkerArray, queue_size=0)
     marker_arr = MarkerArray()
-    scanDataCoords()
+    #scanDataCoords()
     goal_dist = distance(goal,(message.posx,message.posy))
     comp_dist = 1
     r_dist = goal_dist
     theta_d = m.atan2(goal[1]-message.posy,goal[0]-message.posx)
     ang_err = wrapToPi(theta_d-message.theta) # m.atan2(m.sin(theta_d-message.theta),m.cos(theta_d-message.theta))
+    kp = 0.55
     scan_ind = np.argmin(abs(message.angles-ang_err))
     replan = True
     r_goal = goal
@@ -103,11 +106,16 @@ def ray_check(goal):
                 else:
                     check_obs.append(0)
                     check_dist.append(500)
+            min_idx = np.min(message.scandata)
+            if min_idx<comp_dist:
+                check_obs.append(1 if min_idx<scan_ind else -1)
+                #check_dist.append(message.scandata[min_idx])
         
             if np.sum(check_obs) != 0:
                 replan = True
                 scan_ind += np.sum(check_obs)
                 if (scan_ind < message.minind or scan_ind > message.maxind):
+                    
                     replan = False
                 else:
                     r_dist = min(check_dist)
@@ -124,10 +132,14 @@ def ray_check(goal):
         
         count +=1
         if count >= 10:
-            print("replanning found nothing")
+            #print("replanning found nothing")
             replan = False
+            #r_goal = goal
+            #kp = 0.25
+        #if r_dist<0.6:
+            #kp = 0.25
 
-    return theta_d, r_goal
+    return theta_d, r_goal, kp
 
 def generate_wpt_marker(wpt):
     
@@ -211,7 +223,7 @@ def main():
             continue
         
         localGoal = tuple(message.gapGoal)
-        des_ang, r_goal = ray_check(localGoal)
+        des_ang, r_goal,kp = ray_check(localGoal)
         theta_d = des_ang
         ang_err = m.atan2(m.sin(theta_d-message.theta),m.cos(theta_d-message.theta))
         ang_v = np.sign(ang_err) * min(maxTurn,kt*abs(ang_err))
@@ -241,7 +253,7 @@ def main():
         rate.sleep()
                 
 if __name__ == '__main__':
-    try:
-        main()
-    except:
-        rospy.on_shutdown(my_shutdown_hook)
+#    try:
+    main()
+#    except:
+#        rospy.on_shutdown(my_shutdown_hook)
