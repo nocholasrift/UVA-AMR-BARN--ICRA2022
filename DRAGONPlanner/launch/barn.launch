@@ -1,6 +1,6 @@
 <launch>
   <arg name="use_sim_time" default="true" />
-  <arg name="gui" default="true" />
+  <arg name="gui" default="false" />
   <arg name="headless" default="false" />
   <arg name="world_number" default="280" />
 

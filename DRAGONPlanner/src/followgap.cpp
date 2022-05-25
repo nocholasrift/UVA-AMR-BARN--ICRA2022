@@ -43,6 +43,7 @@ sensor_msgs::LaserScan::ConstPtr scanData;
 
 
 const float threshold = .65;
+float top, left, bwidth, bheight;
 
 void publishTree();
 void publishGoal(const Eigen::Vector3f& pose);
@@ -578,7 +579,7 @@ void publishTree(){
     graph_msg.color.g = 0.0;
     graph_msg.color.b = 0.0;
 
-    quadtree::Box<float> box(-20,-20,40,40);
+    quadtree::Box<float> box(left,top,bwidth,bheight);
     std::vector<quadtree::Node*> nodes = tree->query(box);
     nodes.push_back(finalGoal);
 
@@ -687,7 +688,7 @@ void treeGoalcb(const Eigen::Vector3f& pose){
     Eigen::Vector4f segment(p.x(),p.y(),goal.x(),goal.y());
 
 
-        quadtree::Box<float> box(-20,-20,40,40);
+        quadtree::Box<float> box(left,top,bwidth,bheight);
         std::vector<quadtree::Node*> nodes = tree->query(box);
 
         for (auto node : nodes){
@@ -831,13 +832,22 @@ int main(int argc, char** argv){
     ros::init(argc, argv, "rrt_gen");
     ros::NodeHandle nh;
 
-    double goal_x, goal_y;
-    nh.getParam("goal_x", goal_x);
-    nh.getParam("goal_y", goal_y);
+    float goal_x, goal_y;
+    nh.getParam("gap_navigation/goal_x", goal_x);
+    nh.getParam("gap_navigation/goal_y", goal_y);
+
+    nh.getParam("gap_navigation/top", top);
+    nh.getParam("gap_navigation/left", left);
+    nh.getParam("gap_navigation/bwidth", bwidth);
+    nh.getParam("gap_navigation/bheight", bheight);
+
+    // std::cout << goal_x << std::endl;
+    // std::cout << goal_y << std::endl;
+    // exit(0);
 
     Eigen::Vector3f pose(0,0,0);
 
-    quadtree::Box<float> box(-20,-20,40,40);
+    quadtree::Box<float> box(left,top,bwidth,bheight);
     tree = new quadtree::Quadtree<quadtree::Node*, decltype(getBox)>(box, getBox);
     narrowTree = new quadtree::Quadtree<quadtree::Node*, decltype(getBox)>(box, getBox);
     finalGoal = new quadtree::Node();
@@ -846,9 +856,12 @@ int main(int argc, char** argv){
     ros::Subscriber odomSub = nh.subscribe<nav_msgs::Odometry>("/odometry/filtered", 1, boost::bind(&odomcb, _1, &pose));
 
     Eigen::Vector2f goal(goal_x, goal_y);
-    Eigen::Vector2f goalS(1+goal_x,1+goal_y);
-    Eigen::Vector2f goalP(-1+goal_x, -1+goal_y);
+    Eigen::Vector2f goalS(.2+goal_x,goal_y);
+    Eigen::Vector2f goalP(-.2+goal_x, goal_y);
 
+    // std::cout << goal << std::endl;
+    // exit(0);
+    
     finalGoal->p = goal;
     finalGoal->ps = goalS;
     finalGoal->pe = goalP;

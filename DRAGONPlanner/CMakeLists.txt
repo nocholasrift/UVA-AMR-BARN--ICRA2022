@@ -143,6 +143,18 @@ target_link_libraries(gap_navigation
 	${catkin_LIBRARIES} 
 )
 
+add_executable(reduce_lidar src/reduceLidar.cpp)
+
+target_link_libraries(reduce_lidar
+	${catkin_LIBRARIES} 
+)
+
+#add_executable(gap_navigation_no_assert src/followgapNoAssert.cpp)
+
+#target_link_libraries(gap_navigation_no_assert
+#	${catkin_LIBRARIES} 
+#)
+
 #add_executable(rrt_generator src/rrtplanner.cpp)
 
 #target_link_libraries(rrt_generator
