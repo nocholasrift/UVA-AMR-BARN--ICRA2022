@@ -42,7 +42,7 @@ std::string frame_str = "odom";
 sensor_msgs::LaserScan::ConstPtr scanData;
 
 
-const float threshold = .65;
+float threshold;
 float top, left, bwidth, bheight;
 
 void publishTree();
@@ -840,6 +840,7 @@ int main(int argc, char** argv){
     nh.getParam("gap_navigation/left", left);
     nh.getParam("gap_navigation/bwidth", bwidth);
     nh.getParam("gap_navigation/bheight", bheight);
+    nh.getParam("gap_navigation/gapThresh", threshold);
 
     // std::cout << goal_x << std::endl;
     // std::cout << goal_y << std::endl;

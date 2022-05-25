@@ -13,6 +13,7 @@
     <param name="top" value="-100" />
     <param name="bwidth" value="200" />
     <param name="bheight" value="200" />
+    <param name="gapThresh" value=".65" />
     <remap from="/front/scan" to="/truncate/scan" />
   </node>
 
