@@ -14,6 +14,7 @@
     <param name="bwidth" value="200" />
     <param name="bheight" value="200" />
     <param name="gapThresh" value=".65" />
+    <param name="dist" value="10" />
     <remap from="/front/scan" to="/truncate/scan" />
   </node>
 

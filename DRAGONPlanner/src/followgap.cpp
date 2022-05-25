@@ -43,7 +43,9 @@ sensor_msgs::LaserScan::ConstPtr scanData;
 
 
 float threshold;
+float goalDist;
 float top, left, bwidth, bheight;
+bool isSet = false;
 
 void publishTree();
 void publishGoal(const Eigen::Vector3f& pose);
@@ -78,6 +80,20 @@ void odomcb(const nav_msgs::Odometry::ConstPtr& msg, Eigen::Vector3f* pose){
 
     bool goalChanged = false;
 
+    if (!isSet){
+        float gx = pose->x() + goalDist*cos(yaw);
+        float gy = pose->y() + goalDist*sin(yaw);
+
+        finalGoal->p = Eigen::Vector2f(gx, gy);
+        finalGoal->ps = Eigen::Vector2f(gx-.2, gy);
+        finalGoal->pe = Eigen::Vector2f(gx+.2, gy);
+        finalGoal->box.left = gx-JACKAL_WIDTH/2;
+        finalGoal->box.top = gy-JACKAL_LENGTH/2;
+
+        isSet = true;
+    }
+    
+
     for(auto node : nodes){
 
         float d = distToGap(node->ps, node->pe, p);
@@ -109,7 +125,6 @@ void odomcb(const nav_msgs::Odometry::ConstPtr& msg, Eigen::Vector3f* pose){
         ROS_INFO("Navigation complete!");
         exit(0);
     }
-
 
     odomRan=true;
 
@@ -839,6 +854,7 @@ int main(int argc, char** argv){
     nh.getParam("gap_navigation/top", top);
     nh.getParam("gap_navigation/left", left);
     nh.getParam("gap_navigation/bwidth", bwidth);
+    nh.getParam("gap_navigation/dist", goalDist);
     nh.getParam("gap_navigation/bheight", bheight);
     nh.getParam("gap_navigation/gapThresh", threshold);
 
