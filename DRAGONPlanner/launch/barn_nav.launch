@@ -22,6 +22,7 @@
     <param name="cap" value="10" />
   </node>
 
-  <node pkg="barn_challenge" type="cone_bench.py" name="cone_bench" output="screen" />
+  <!-- <node pkg="barn_challenge" type="cone_bench.py" name="cone_bench"
+  output="screen" /> -->
 
 </launch>

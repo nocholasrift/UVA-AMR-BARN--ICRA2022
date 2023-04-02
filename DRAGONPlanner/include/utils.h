@@ -148,7 +148,8 @@ bool getSegmentIntersection(const Eigen::Vector4f& gap, const Eigen::Vector4f& s
 }
 
 // https://www.geeksforgeeks.org/check-whether-two-points-x1-y1-and-x2-y2-lie-on-same-side-of-a-given-line-or-not/
-bool pointsAreOnSameSideOfLine(float a, float b, float c, const Eigen::Vector2f& p1, const Eigen::Vector2f& p2) {
+bool pointsAreOnSameSideOfLine(float a, float b, float c, 
+							const Eigen::Vector2f& p1, const Eigen::Vector2f& p2) {
 
     // float fx1 = a * p1.x() + b * p1.y() - c;
     // float fx2 = a * p2.x() + b * p2.y() - c;

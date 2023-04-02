@@ -14,7 +14,6 @@
 #include <sensor_msgs/LaserScan.h>
 #include <actionlib_msgs/GoalStatus.h>
 #include <visualization_msgs/Marker.h>
-#include <geometry_msgs/PoseStamped.h>
 #include <std_msgs/Float32MultiArray.h>
 #include <move_base_msgs/MoveBaseGoal.h>
 #include <std_msgs/MultiArrayDimension.h>
@@ -39,7 +38,7 @@ quadtree::Node* finalGoal;
 
 std::vector<quadtree::Node*> localNodes;
 
-std::string frame_str = "map";
+std::string frame_str = "odom";
 sensor_msgs::LaserScan::ConstPtr scanData;
 
 
@@ -47,8 +46,6 @@ float threshold;
 float goalDist;
 float top, left, bwidth, bheight;
 bool isSet = false;
-
-float goal_x, goal_y;
 
 void publishTree();
 void publishGoal(const Eigen::Vector3f& pose);
@@ -84,9 +81,8 @@ void odomcb(const nav_msgs::Odometry::ConstPtr& msg, Eigen::Vector3f* pose){
     bool goalChanged = false;
 
     if (!isSet){
-        // I know it's flipped but just go with it for now :)
-        float gx = goal_x; //pose->x() + goalDist*cos(yaw);
-        float gy = goal_y; //pose->y() + goalDist*sin(yaw);
+        float gx = pose->x() + goalDist*cos(yaw);
+        float gy = pose->y() + goalDist*sin(yaw);
 
         finalGoal->p = Eigen::Vector2f(gx, gy);
         finalGoal->ps = Eigen::Vector2f(gx-.2, gy);
@@ -102,7 +98,7 @@ void odomcb(const nav_msgs::Odometry::ConstPtr& msg, Eigen::Vector3f* pose){
 
         float d = distToGap(node->ps, node->pe, p);
 
-        if (d < .4){
+        if (d < .3){
             node->visited = true;
             if (node->isGoal){
                 node->isGoal = false;
@@ -120,8 +116,7 @@ void odomcb(const nav_msgs::Odometry::ConstPtr& msg, Eigen::Vector3f* pose){
             treeGoalcb(*pose);
 
         currGoal = nullptr;
-    }
-    else if (currGoal != nullptr){
+    }else if (currGoal != nullptr){
         publishGoal(*pose);
     }
 
@@ -159,23 +154,16 @@ void publishGoal(const Eigen::Vector3f& pose){
     float target_x = currGoal->p.x();
     float target_y = currGoal->p.y();
     float yaw = angle;
-    // std_msgs::Float32MultiArray goalMsg;
-    // goalMsg.layout.dim.push_back(std_msgs::MultiArrayDimension());
-    // goalMsg.layout.dim[0].size = 3;
-    // goalMsg.layout.dim[0].stride = 1;
-    // goalMsg.layout.dim[0].label = "xy";
+    std_msgs::Float32MultiArray goalMsg;
+    goalMsg.layout.dim.push_back(std_msgs::MultiArrayDimension());
+    goalMsg.layout.dim[0].size = 3;
+    goalMsg.layout.dim[0].stride = 1;
+    goalMsg.layout.dim[0].label = "xy";
     
-    // goalMsg.data.push_back(target_x);
-    // goalMsg.data.push_back(target_y);
-    // goalMsg.data.push_back(yaw);
-    // //Publish 
-    // goal_pub.publish(goalMsg);
-    geometry_msgs::PoseStamped goalMsg;
-    goalMsg.header.stamp = ros::Time::now();
-    goalMsg.header.frame_id = "map";
-    goalMsg.pose.position.x = target_x;
-    goalMsg.pose.position.y = target_y;
-
+    goalMsg.data.push_back(target_x);
+    goalMsg.data.push_back(target_y);
+    goalMsg.data.push_back(yaw);
+    //Publish 
     goal_pub.publish(goalMsg);
 }
 
@@ -564,8 +552,8 @@ void updateTree(std::vector<Eigen::Vector2i>& indices,const sensor_msgs::LaserSc
 
     }
 
-}
 
+}
 
 void publishTree(){
     // ROS_INFO("publishing");
@@ -691,6 +679,7 @@ void publishTree(){
 
     }
 
+
     marker_arr.markers.push_back(line_msg);
     marker_arr.markers.push_back(graph_msg);
     marker_arr_pub.publish(marker_arr);
@@ -709,15 +698,13 @@ void treeGoalcb(const Eigen::Vector3f& pose){
     quadtree::Node* champ_node = nullptr;
     quadtree::Node* global_node = nullptr;
 
-    Eigen::Vector2f goal(finalGoal->p.x(), finalGoal->p.y());
+    Eigen::Vector2f goal(0,10);
     Eigen::Vector2f p(pose.x(), pose.y());
     Eigen::Vector4f segment(p.x(),p.y(),goal.x(),goal.y());
 
 
         quadtree::Box<float> box(left,top,bwidth,bheight);
         std::vector<quadtree::Node*> nodes = tree->query(box);
-
-        ROS_INFO("NUMBER OF GAPS IS: %zu", nodes.size());
 
         for (auto node : nodes){
 
@@ -733,13 +720,10 @@ void treeGoalcb(const Eigen::Vector3f& pose){
             if (cost < 0)
                 cost = 0;
 
-            ROS_INFO("Score for (%.2f,%.2f) is: :%.2f", node->p.x(), node->p.y(), cost);
+            // ROS_INFO("Score for (%.2f,%.2f) is: :%.2f", node->p.x(), node->p.y(), cost);
 
 
             node->isGoal = false;
-
-            if (!isGapAdmissible(node->p, scanData, pose))
-                ROS_INFO("(%.2f, %.2f) not admissible", node->p.x(), node->p.y());
 
             if (!node->visited && cost < champ_dist && isGapAdmissible(node->p, scanData, pose)){
                 // ROS_INFO("selecting (%.2f, %.2f) as new champ", node->p.x(), node->p.y());
@@ -756,6 +740,7 @@ void treeGoalcb(const Eigen::Vector3f& pose){
 
 
     if (champ_node){
+
 
         if (!isPointCompletelyFree(champ_node->p, pose, scanData)){
             ROS_INFO("----------------------");
@@ -862,6 +847,7 @@ int main(int argc, char** argv){
     ros::init(argc, argv, "rrt_gen");
     ros::NodeHandle nh;
 
+    float goal_x, goal_y;
     nh.getParam("gap_navigation/goal_x", goal_x);
     nh.getParam("gap_navigation/goal_y", goal_y);
 
@@ -908,8 +894,7 @@ int main(int argc, char** argv){
 
 
     marker_arr_pub = nh.advertise<visualization_msgs::MarkerArray>("gaps", 0);
-    // goal_pub = nh.advertise<std_msgs::Float32MultiArray>("gapGoal", 10);
-    goal_pub = nh.advertise<geometry_msgs::PoseStamped>("gapGoal", 10);
+    goal_pub = nh.advertise<std_msgs::Float32MultiArray>("gapGoal", 10);
     currGoal=nullptr;
 
     ros::spin();
